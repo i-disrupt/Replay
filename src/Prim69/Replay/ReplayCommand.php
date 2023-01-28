@@ -1,31 +1,30 @@
 <?php
+declare(strict_types=1);
 
 namespace Prim69\Replay;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\command\PluginIdentifiableCommand;
-use pocketmine\Player;
+use pocketmine\player\Player;
 use pocketmine\plugin\Plugin;
+use pocketmine\plugin\PluginOwned;
+use pocketmine\plugin\PluginOwnedTrait;
 use pocketmine\utils\TextFormat as TF;
 use function array_keys;
 use function count;
 use function implode;
 use function is_null;
 
-class ReplayCommand extends Command implements PluginIdentifiableCommand {
+class ReplayCommand extends Command implements PluginOwned{
+	use PluginOwnedTrait;
 
-	/** @var Main */
-	public $main;
-
-	public function __construct(Main $main){
+	public function __construct(private Main $main){
 		parent::__construct(
 			"replay",
-			TF::AQUA . "",
+			TF::AQUA,
 			TF::RED . "Usage: " . TF::GRAY . "/replay < | start <name> | save:stop <name> | watch <name> | delete <name> | list >"
 		);
 		$this->setPermission("replay.command");
-		$this->main = $main;
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){
@@ -54,7 +53,7 @@ class ReplayCommand extends Command implements PluginIdentifiableCommand {
 			return;
 		}
 
-		$player = $this->main->getServer()->getPlayer($args[1]);
+		$player = $this->main->getServer()->getPlayerByPrefix($args[1]);
 		if(is_null($player)){
 			$sender->sendMessage(TF::RED . "That player is not online!");
 			return;
@@ -75,7 +74,8 @@ class ReplayCommand extends Command implements PluginIdentifiableCommand {
 					"blocks" => [],
 					"preBlocks" => []
 				];
-				$this->main->positions[$name] = [$player->yaw, $player->pitch, $player->x, $player->y, $player->z, $player->getLevel()->getName()];
+				$location = $player->getLocation();
+				$this->main->positions[$name] = [$location->yaw, $location->pitch, $location->x, $location->y, $location->z];
 				$sender->sendMessage(TF::GREEN . "Successfully started recording " . TF::WHITE . "$name! " . TF::GREEN . "Use /replay save followed by /replay watch to view it!");
 				break;
 			case "save":
@@ -114,12 +114,11 @@ class ReplayCommand extends Command implements PluginIdentifiableCommand {
 		}
 	}
 
-	public function isSaved(string $name) : bool {
+	public function isSaved(string $name) : bool{
 		return isset($this->main->saved[$name]);
 	}
 
-	public function getPlugin() : Plugin {
+	public function getOwningPlugin() : Plugin{
 		return $this->main;
 	}
-
 }
